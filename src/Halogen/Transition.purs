@@ -12,7 +12,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-type Props i o m =
+type Props f m =
   { enterClass :: String
   , enterActiveClass :: String
   , enterTimeout :: Milliseconds
@@ -20,13 +20,15 @@ type Props i o m =
   , leaveActiveClass :: String
   , leaveTimeout :: Milliseconds
   , shown :: Boolean
-  , render :: HTML i o m
+  , render :: HTML f m
   }
 
-data Query i o m a
+type Message f = f Unit
+
+data Query f m a
   = OnEnter a
-  | HandleChild o a
-  | ReceiveProps (Props i o m) a
+  | ReceiveProps (Props f m) a
+  | Raise (f Unit) a
 
 data TransitionState
   = Enter
@@ -37,26 +39,26 @@ data TransitionState
 
 derive instance eqTransitionState :: Eq TransitionState
 
-type State i o m =
-  { props :: Props i o m
+type State f m =
+  { props :: Props f m
   , shown :: Boolean
   , transitionState :: TransitionState
   }
 
-type HTML i o m = H.ComponentHTML (Query i o m) () m
+type HTML f m = H.ComponentHTML (Query f m) () m
 
-type DSL i o m = H.HalogenM (State i o m) (Query i o m) () o m
+type DSL f m = H.HalogenM (State f m) (Query f m) () (Message f) m
 
-type Slot i o m = H.Slot (Query i o m) o Unit
+type Slot f m = H.Slot (Query f m) (Message f) Unit
 
-initialState :: forall i o m. Props i o m -> State i o m
+initialState :: forall f m. Props f m -> State f m
 initialState props =
   { props
   , shown: props.shown
   , transitionState: Done
   }
 
-render :: forall i o m. State i o m -> HTML i o m
+render :: forall f m. State f m -> HTML f m
 render { shown, props, transitionState } =
   HH.div
   [ HP.class_ $ H.ClassName cls ] $ join
@@ -71,9 +73,9 @@ render { shown, props, transitionState } =
     _ -> ""
 
 component
-  :: forall i o m
+  :: forall f m
    . MonadAff m
-  => H.Component HH.HTML (Query i o m) (Props i o m) o m
+  => H.Component HH.HTML (Query f m) (Props f m) (Message f) m
 component = H.component
   { initialState
   , render
@@ -83,7 +85,7 @@ component = H.component
   , finalizer: Nothing
   }
   where
-  handleProps :: DSL i o m Unit
+  handleProps :: DSL f m Unit
   handleProps = do
     state <- H.get
     if state.props.shown
@@ -109,13 +111,13 @@ component = H.component
                 else s
           else pure unit
 
-  eval :: Query i o m ~> DSL i o m
+  eval :: Query f m ~> DSL f m
   eval (OnEnter n) = n <$ do
     handleProps
-
-  eval (HandleChild o n) = n <$ do
-    H.raise o
 
   eval (ReceiveProps props n) = n <$ do
     H.modify_ $ _ { props = props }
     handleProps
+
+  eval (Raise pq n) = n <$ do
+    H.raise pq

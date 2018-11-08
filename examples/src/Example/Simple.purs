@@ -12,12 +12,13 @@ import Halogen.Transition as Transition
 
 data Query a
   = OnClick a
+  | HandleTransition (Transition.Message Query) a
 
 type State =
   { shown :: Boolean
   }
 
-type Slots = (transition :: Transition.Slot Unit Void Aff)
+type Slots = (transition :: Transition.Slot Query Aff)
 
 _transition = SProxy :: SProxy "transition"
 
@@ -29,6 +30,12 @@ initialState :: State
 initialState =
   { shown: true
   }
+
+renderInner :: Transition.HTML Query Aff
+renderInner =
+  HH.div
+  [ HE.onClick $ HE.input_ $ Transition.Raise (OnClick unit) ]
+  [ HH.text "hello world!" ]
 
 render :: State -> HTML
 render state =
@@ -44,8 +51,8 @@ render state =
     , leaveActiveClass: "simple-leave-active"
     , leaveTimeout: Milliseconds 300.0
     , shown: state.shown
-    , render: HH.text "hello world!"
-    } absurd
+    , render: renderInner
+    } $ HE.input HandleTransition
   ]
 
 component :: H.Component HH.HTML Query Unit Void Aff
@@ -61,3 +68,6 @@ component = H.component
   eval :: Query ~> DSL
   eval (OnClick n) = n <$ do
     H.modify_ $ \s -> s { shown = not s.shown }
+
+  eval (HandleTransition msg n) = n <$ do
+    eval msg
