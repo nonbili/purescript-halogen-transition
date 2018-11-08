@@ -89,7 +89,7 @@ component = H.component
     if state.props.shown
       then do
         H.modify_ $ _ { shown = true, transitionState = Enter }
-        H.liftAff $ Aff.delay $ Milliseconds 0.0
+        H.liftAff $ Aff.delay $ Milliseconds 1.0
         H.modify_ $ _ { transitionState = EnterActive }
         H.liftAff $ Aff.delay state.props.enterTimeout
         H.modify_ $ \s ->
@@ -100,7 +100,7 @@ component = H.component
         if state.shown && not state.props.shown
           then do
             H.modify_ $ _ { transitionState = Leave }
-            H.liftAff $ Aff.delay $ Milliseconds 0.0
+            H.liftAff $ Aff.delay $ Milliseconds 1.0
             H.modify_ $ _ { transitionState = LeaveActive }
             H.liftAff $ Aff.delay state.props.leaveTimeout
             H.modify_ $ \s ->
