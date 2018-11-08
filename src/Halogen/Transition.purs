@@ -116,8 +116,10 @@ component = H.component
     handleProps
 
   eval (ReceiveProps props n) = n <$ do
-    H.modify_ $ _ { props = props }
-    handleProps
+    state <- H.get
+    when (state.shown /= props.shown) $ do
+      H.modify_ $ _ { props = props }
+      handleProps
 
   eval (Raise pq n) = n <$ do
     H.raise pq
