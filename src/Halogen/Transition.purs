@@ -1,4 +1,11 @@
-module Halogen.Transition where
+module Halogen.Transition
+  ( Query
+  , Message
+  , Slot
+  , HTML
+  , raise
+  , component
+  ) where
 
 import Prelude
 
@@ -49,7 +56,10 @@ type HTML f m = H.ComponentHTML (Query f m) () m
 
 type DSL f m = H.HalogenM (State f m) (Query f m) () (Message f) m
 
-type Slot f m = H.Slot (Query f m) (Message f) Unit
+type Slot f m s = H.Slot (Query f m) (Message f) s
+
+raise :: forall f m a. f Unit -> a -> Query f m a
+raise f = Raise f
 
 initialState :: forall f m. Props f m -> State f m
 initialState props =
@@ -117,8 +127,8 @@ component = H.component
 
   eval (ReceiveProps props n) = n <$ do
     state <- H.get
+    H.modify_ $ _ { props = props }
     when (state.shown /= props.shown) $ do
-      H.modify_ $ _ { props = props }
       handleProps
 
   eval (Raise pq n) = n <$ do

@@ -18,7 +18,7 @@ type State =
   { shown :: Boolean
   }
 
-type Slots = (transition :: Transition.Slot Query Aff)
+type Slots = (transition :: Transition.Slot Query Aff Unit)
 
 _transition = SProxy :: SProxy "transition"
 
@@ -34,7 +34,7 @@ initialState =
 renderInner :: Transition.HTML Query Aff
 renderInner =
   HH.div
-  [ HE.onClick $ HE.input_ $ Transition.Raise (OnClick unit) ]
+  [ HE.onClick $ HE.input_ $ Transition.raise (OnClick unit) ]
   [ HH.text "hello world!" ]
 
 render :: State -> HTML
