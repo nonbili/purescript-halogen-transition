@@ -15,10 +15,8 @@ render state =
     HH.slot _transition unit Transition.component
     { enterClass: "simple-enter"
     , enterActiveClass: "simple-enter-active"
-    , enterTimeout: Milliseconds 1000.0
     , leaveClass: "simple-leave"
     , leaveActiveClass: "simple-leave-active"
-    , leaveTimeout: Milliseconds 600.0
     , shown: state.shown
     , render: HH.text "hello world!"
     } absurd
