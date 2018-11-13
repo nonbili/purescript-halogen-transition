@@ -22,10 +22,8 @@ import Halogen.HTML.Properties as HP
 type Props f m =
   { enterClass :: String
   , enterActiveClass :: String
-  , enterTimeout :: Milliseconds
   , leaveClass :: String
   , leaveActiveClass :: String
-  , leaveTimeout :: Milliseconds
   , shown :: Boolean
   , render :: HTML f m
   }
@@ -36,6 +34,7 @@ data Query f m a
   = OnEnter a
   | ReceiveProps (Props f m) a
   | Raise (f Unit) a
+  | HandleTransitionEnd a
 
 data TransitionState
   = Enter
@@ -71,7 +70,9 @@ initialState props =
 render :: forall f m. State f m -> HTML f m
 render { shown, props, transitionState } =
   HH.div
-  [ HP.class_ $ H.ClassName cls ] $ join
+  [ HP.class_ $ H.ClassName cls
+  , HE.onTransitionEnd $ HE.input_ HandleTransitionEnd
+  ] $ join
   [ guard shown $> props.render
   ]
   where
@@ -103,22 +104,12 @@ component = H.component
         H.modify_ $ _ { shown = true, transitionState = Enter }
         H.liftAff $ Aff.delay $ Milliseconds 1.0
         H.modify_ $ _ { transitionState = EnterActive }
-        H.liftAff $ Aff.delay state.props.enterTimeout
-        H.modify_ $ \s ->
-          if s.transitionState == EnterActive
-            then s { transitionState = Done }
-            else s
       else
         if state.shown && not state.props.shown
           then do
             H.modify_ $ _ { transitionState = Leave }
             H.liftAff $ Aff.delay $ Milliseconds 1.0
             H.modify_ $ _ { transitionState = LeaveActive }
-            H.liftAff $ Aff.delay state.props.leaveTimeout
-            H.modify_ $ \s ->
-              if s.transitionState == LeaveActive
-                then s { shown = false, transitionState = Done }
-                else s
           else pure unit
 
   eval :: Query f m ~> DSL f m
@@ -128,8 +119,14 @@ component = H.component
   eval (ReceiveProps props n) = n <$ do
     state <- H.get
     H.modify_ $ _ { props = props }
-    when (state.shown /= props.shown) $ do
+    when (state.props.shown /= props.shown)
       handleProps
 
   eval (Raise pq n) = n <$ do
     H.raise pq
+
+  eval (HandleTransitionEnd n) = n <$ do
+    H.modify_ $ \s ->
+      if s.transitionState == LeaveActive
+        then s { shown = false, transitionState = Done }
+        else s { transitionState = Done }

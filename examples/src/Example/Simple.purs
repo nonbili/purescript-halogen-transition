@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
-import Effect.Aff (Aff, Milliseconds(..))
+import Effect.Aff (Aff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -46,10 +46,8 @@ render state =
   , HH.slot _transition unit Transition.component
     { enterClass: "simple-enter"
     , enterActiveClass: "simple-enter-active"
-    , enterTimeout: Milliseconds 500.0
     , leaveClass: "simple-leave"
     , leaveActiveClass: "simple-leave-active"
-    , leaveTimeout: Milliseconds 300.0
     , shown: state.shown
     , render: renderInner
     } $ HE.input HandleTransition
