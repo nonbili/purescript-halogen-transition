@@ -2,6 +2,7 @@ module Example.Simple where
 
 import Prelude
 
+import Data.Const (Const)
 import Data.Maybe (Maybe(..))
 import Data.Symbol (SProxy(..))
 import Effect.Aff (Aff)
@@ -18,7 +19,7 @@ type State =
   { shown :: Boolean
   }
 
-type Slots = (transition :: Transition.Slot Query Aff Unit)
+type Slots = (transition :: H.Slot (Const Void) (Query Unit) Unit)
 
 _transition = SProxy :: SProxy "transition"
 
@@ -34,7 +35,7 @@ initialState =
 renderInner :: Transition.HTML Query Aff
 renderInner =
   HH.div
-  [ HE.onClick $ HE.input_ $ Transition.raise (OnClick unit) ]
+  [ HE.onClick $ const $ Just $ Transition.raise (OnClick unit) ]
   [ HH.text "hello world!" ]
 
 render :: State -> HTML

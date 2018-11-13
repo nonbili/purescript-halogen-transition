@@ -1,8 +1,7 @@
 module Halogen.Transition
-  ( Query
-  , Message
-  , Slot
+  ( Message
   , HTML
+  , Action
   , raise
   , component
   ) where
@@ -10,7 +9,9 @@ module Halogen.Transition
 import Prelude
 
 import Control.MonadPlus (guard)
+import Data.Const (Const(..))
 import Data.Maybe (Maybe(..))
+import Data.Newtype (un)
 import Data.Time.Duration (Milliseconds(..))
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
@@ -30,11 +31,9 @@ type Props f m =
 
 type Message f = f Unit
 
-data Query f m a
-  = OnEnter a
-  | ReceiveProps (Props f m) a
-  | Raise (f Unit) a
-  | HandleTransitionEnd a
+data Action f
+  = HandleTransitionEnd
+  | Raise (f Unit)
 
 data TransitionState
   = Enter
@@ -51,13 +50,9 @@ type State f m =
   , transitionState :: TransitionState
   }
 
-type HTML f m = H.ComponentHTML (Query f m) () m
+type HTML f m = H.ComponentHTML' (Action f) () m
 
-type DSL f m = H.HalogenM (State f m) (Query f m) () (Message f) m
-
-type Slot f m s = H.Slot (Query f m) (Message f) s
-
-raise :: forall f m a. f Unit -> a -> Query f m a
+raise :: forall f. f Unit -> Action f
 raise f = Raise f
 
 initialState :: forall f m. Props f m -> State f m
@@ -71,7 +66,7 @@ render :: forall f m. State f m -> HTML f m
 render { shown, props, transitionState } =
   HH.div
   [ HP.class_ $ H.ClassName cls
-  , HE.onTransitionEnd $ HE.input_ HandleTransitionEnd
+  , HE.onTransitionEnd $ const $ Just HandleTransitionEnd
   ] $ join
   [ guard shown $> props.render
   ]
@@ -86,17 +81,13 @@ render { shown, props, transitionState } =
 component
   :: forall f m
    . MonadAff m
-  => H.Component HH.HTML (Query f m) (Props f m) (Message f) m
-component = H.component
+  => H.Component HH.HTML (Const Void) (Props f m) (Message f) m
+component = H.mkComponent
   { initialState
   , render
   , eval
-  , receiver: HE.input ReceiveProps
-  , initializer: Just $ H.action OnEnter
-  , finalizer: Nothing
   }
   where
-  handleProps :: DSL f m Unit
   handleProps = do
     state <- H.get
     if state.props.shown
@@ -112,21 +103,26 @@ component = H.component
             H.modify_ $ _ { transitionState = LeaveActive }
           else pure unit
 
-  eval :: Query f m ~> DSL f m
-  eval (OnEnter n) = n <$ do
-    handleProps
+  eval
+    :: H.HalogenQ (Const Void) (Action f) (Props f m)
+    ~> H.HalogenM' (State f m) (Action f) () (Message f) m
+  eval = case _ of
+    H.Initialize n -> n <$ handleProps
 
-  eval (ReceiveProps props n) = n <$ do
-    state <- H.get
-    H.modify_ $ _ { props = props }
-    when (state.props.shown /= props.shown)
-      handleProps
+    H.Finalize n -> pure n
 
-  eval (Raise pq n) = n <$ do
-    H.raise pq
+    H.Receive props n -> n <$ do
+      state <- H.get
+      H.modify_ $ _ { props = props }
+      when (state.props.shown /= props.shown)
+        handleProps
 
-  eval (HandleTransitionEnd n) = n <$ do
-    H.modify_ $ \s ->
-      if s.transitionState == LeaveActive
-        then s { shown = false, transitionState = Done }
-        else s { transitionState = Done }
+    H.Handle act n -> n <$ case act of
+      HandleTransitionEnd -> do
+        H.modify_ $ \s ->
+          if s.transitionState == LeaveActive
+            then s { shown = false, transitionState = Done }
+            else s { transitionState = Done }
+      Raise f -> H.raise f
+
+    H.Request fa -> absurd (un Const fa)
