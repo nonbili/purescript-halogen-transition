@@ -9,7 +9,7 @@ jobs:
 
       - restore_cache:
           keys:
-          - deps-{{ checksum "bower.json" }}-{{ checksum "examples/bower.json" }}-{{ checksum "examples/package.json" }}
+          - deps-{{ checksum "bower.json" }}-{{ checksum "examples/bower.json" }}
 
       - run:
           command: |
@@ -35,7 +35,7 @@ jobs:
             - examples/node_modules
             - examples/bower_components
             - output
-          key: deps-{{ checksum "bower.json" }}-{{ checksum "examples/bower.json" }}-{{ checksum "examples/package.json" }}
+          key: deps-{{ checksum "bower.json" }}-{{ checksum "examples/bower.json" }}
 
       - run:
           command: |
