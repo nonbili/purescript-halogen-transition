@@ -11,6 +11,9 @@ Please check examples folder. It's as simple as
 ```
 import Halogen.Transition as Transition
 
+data Query a
+  = HandleTransition (Transition.Message Query) a
+
 render state =
     HH.slot _transition unit Transition.component
     { enterClass: "simple-enter"
@@ -19,5 +22,5 @@ render state =
     , leaveActiveClass: "simple-leave-active"
     , shown: state.shown
     , render: HH.text "hello world!"
-    } absurd
+    } $ HE.input HandleTransition
 ```
