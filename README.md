@@ -1,5 +1,7 @@
 # purescript-halogen-transition
 
+[![CircleCI](https://circleci.com/gh/nonbili/purescript-halogen-transition.svg?style=svg)](https://circleci.com/gh/nonbili/purescript-halogen-transition)
+
 Currently only works with Halogen 5. I don't mind maintaining a Halogen 4 branch if there is any interest.
 
 See a [demo](https://nonbili.github.io/purescript-halogen-transition/#Simple).
