@@ -1,6 +1,5 @@
 ```
-bower link purescript-halogen-transition
-pulp -w build
 yarn
+pulp -w build -I ../src
 yarn start
 ```
