@@ -15,16 +15,11 @@ jobs:
           command: |
             git checkout gh-pages
             git reset --hard origin/master
-            yarn add --dev bower
-            yarn bower install
-            yarn bower link
 
       - run:
           working_directory: examples
           command: |
             yarn add --dev bower purescript pulp
-            yarn bower link purescript-halogen-transition
-            yarn bower install
             yarn
             yarn build
 
