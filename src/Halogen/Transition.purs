@@ -1,5 +1,6 @@
 module Halogen.Transition
   ( Query
+  , Action
   , Message
   , Slot
   , HTML
@@ -10,6 +11,7 @@ module Halogen.Transition
 import Prelude
 
 import Control.MonadPlus (guard)
+import Data.Const (Const)
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 import Effect.Aff as Aff
@@ -28,13 +30,15 @@ type Props f m =
   , render :: HTML f m
   }
 
-type Message f = f Unit
+type Message f = f
 
-data Query f m a
-  = OnEnter a
-  | ReceiveProps (Props f m) a
-  | Raise (f Unit) a
-  | HandleTransitionEnd a
+type Query = Const Void
+
+data Action f m
+  = OnEnter
+  | ReceiveProps (Props f m)
+  | Raise f
+  | HandleTransitionEnd
 
 data TransitionState
   = Enter
@@ -51,13 +55,13 @@ type State f m =
   , transitionState :: TransitionState
   }
 
-type HTML f m = H.ComponentHTML (Query f m) () m
+type HTML f m = H.ComponentHTML (Action f m) () m
 
-type DSL f m = H.HalogenM (State f m) (Query f m) () (Message f) m
+type DSL f m = H.HalogenM (State f m) (Action f m) () (Message f) m
 
-type Slot f m s = H.Slot (Query f m) (Message f) s
+type Slot f s = H.Slot Query (Message f) s
 
-raise :: forall f m a. f Unit -> a -> Query f m a
+raise :: forall f m. f -> Action f m
 raise f = Raise f
 
 initialState :: forall f m. Props f m -> State f m
@@ -71,7 +75,7 @@ render :: forall f m. State f m -> HTML f m
 render { shown, props, transitionState } =
   HH.div
   [ HP.class_ $ H.ClassName cls
-  , HE.onTransitionEnd $ HE.input_ HandleTransitionEnd
+  , HE.onTransitionEnd $ Just <<< const HandleTransitionEnd
   ] $ join
   [ guard shown $> props.render
   ]
@@ -86,46 +90,55 @@ render { shown, props, transitionState } =
 component
   :: forall f m
    . MonadAff m
-  => H.Component HH.HTML (Query f m) (Props f m) (Message f) m
-component = H.component
+  => H.Component HH.HTML Query (Props f m) (Message f) m
+component = H.mkComponent
   { initialState
   , render
-  , eval
-  , receiver: HE.input ReceiveProps
-  , initializer: Just $ H.action OnEnter
-  , finalizer: Nothing
+  , eval: H.mkEval $ H.defaultEval
+    { handleAction = handleAction
+    , initialize = Just OnEnter
+    , receive = Just <<< ReceiveProps
+    }
   }
-  where
-  handleProps :: DSL f m Unit
-  handleProps = do
-    state <- H.get
-    if state.props.shown
-      then do
-        H.modify_ $ _ { shown = true, transitionState = Enter }
-        H.liftAff $ Aff.delay $ Milliseconds 1.0
-        H.modify_ $ _ { transitionState = EnterActive }
-      else
-        if state.shown && not state.props.shown
-          then do
-            H.modify_ $ _ { transitionState = Leave }
-            H.liftAff $ Aff.delay $ Milliseconds 1.0
-            H.modify_ $ _ { transitionState = LeaveActive }
-          else pure unit
 
-  eval :: Query f m ~> DSL f m
-  eval (OnEnter n) = n <$ do
+handleProps
+  :: forall f m
+   . MonadAff m
+  => DSL f m Unit
+handleProps = do
+  state <- H.get
+  if state.props.shown
+    then do
+      H.modify_ $ _ { shown = true, transitionState = Enter }
+      H.liftAff $ Aff.delay $ Milliseconds 1.0
+      H.modify_ $ _ { transitionState = EnterActive }
+    else
+      if state.shown && not state.props.shown
+        then do
+          H.modify_ $ _ { transitionState = Leave }
+          H.liftAff $ Aff.delay $ Milliseconds 1.0
+          H.modify_ $ _ { transitionState = LeaveActive }
+        else pure unit
+
+handleAction
+  :: forall f m
+   . MonadAff m
+  => Action f m
+  -> DSL f m Unit
+handleAction = case _ of
+  OnEnter -> do
     handleProps
 
-  eval (ReceiveProps props n) = n <$ do
+  ReceiveProps props -> do
     state <- H.get
     H.modify_ $ _ { props = props }
     when (state.props.shown /= props.shown)
       handleProps
 
-  eval (Raise pq n) = n <$ do
+  Raise pq -> do
     H.raise pq
 
-  eval (HandleTransitionEnd n) = n <$ do
+  HandleTransitionEnd -> do
     H.modify_ $ \s ->
       if s.transitionState == LeaveActive
         then s { shown = false, transitionState = Done }

@@ -8,13 +8,10 @@
     "output"
   ],
   "dependencies": {
-    "purescript-halogen-storybook": "https://github.com/thomashoneyman/purescript-halogen-storybook.git#1d57ecc3ac2eb145caa7e58f8404a6f3d09b1194"
+    "purescript-halogen-storybook": "https://github.com/rnons/purescript-halogen-storybook.git#0627e1a3b0aa2116c1849eaa2d1b7604156afffb"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0",
     "purescript-debug": "^4.0.0"
-  },
-  "resolutions": {
-    "purescript-halogen": "e43096ccde699f68f1803acd23bab493a7190e2c"
   }
 }
